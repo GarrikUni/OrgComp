@@ -7,10 +7,6 @@ using namespace std;
 
 //g++ -o <arquivo saída> <arquivo entrada>; <-- compilar o exe
 
-// Observem que em um momento futuro (M2) será solicitado que vocês separem as partes
-// de uma instrução lida, por exemplo:
-// A instrução 0x00500413 formato = i, rd = 8, f3 = 0, rs1 = 0, imed = 5 
-
 /*
 LISTA DE OPCODES DO RISC-V (ref: https://www.cs.sfu.ca/~ashriram/Courses/CS295/assets/notebooks/RISCV/RISCV_CARD.pdf)
 0110011 - Tipo R
@@ -67,7 +63,7 @@ int binToInt(const string& bin) {
 }
 
 string getOpcode(string binario) {
-    return binario.substr(25, 7); //
+    return binario.substr(25, 7);
 }
 
 int main() {
@@ -79,11 +75,14 @@ int main() {
 
     ifstream arquivo_lido("ex01_hex_dump.txt"); // Arquivo Hex dump 
 
+    int rdHAZ[3] = {0,0,0};
+
     // Use a while loop together with the getline() function to read the file line by line
     while ( getline(arquivo_lido, texto) ) {
         // Verificar os caracteres 7(texto[6]) e 8(texto[7]), pois estes são os caracteres que informam o OPCODE
-        // Converter o hexadecimal pra binário, e analisar qual o OPCODE
-        // edit: é possível analisar o OPCODE sem converter pra binário
+
+        rdHAZ[2] = rdHAZ[1]; // Avança um 
+        rdHAZ[1] = rdHAZ[0];
         
         cout << hexToBinary(texto) << endl;
         
@@ -92,44 +91,94 @@ int main() {
         if ( texto[7] == '3' ) { // Verifica se se é um dos tipos que termina com valor 3
             
             if ( texto[6] == '3' || texto[6] == 'b' ) { //verificar tipo R (0011 ou 1011)(3 ou b)
-                
-                int rd = binToInt(binario.substr(20, 5));
+
                 int rs1 = binToInt(binario.substr(12, 5));
                 int rs2 = binToInt(binario.substr(7, 5));
+
+                if ( rdHAZ[1] != 0 && (rdHAZ[1] == rs1  || rdHAZ[1] == rs2) )
+                    cout << "HAZARD!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 1Linha\n";
+                if ( rdHAZ[2] != 0 && (rdHAZ[2] == rs1  || rdHAZ[2] == rs2) )
+                    cout << "HAZARD!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 2Linhas\n";
+                
+                int rd = binToInt(binario.substr(20, 5));
+
+                rdHAZ[0] = rd;
+                
                 cout << "Tipo R: rd=" << rd << ", rs1=" << rs1 << ", rs2=" << rs2 << endl;
                 
-                cout << texto << " => Tipo R\n";
                 cont.tipoR++;
-            } else if ( texto[6] == '0' || texto[6] == '1' || texto[6] == '7'  || texto[6] == '8'  || texto[6] == '9'  || texto[6] == 'f' ) { //verificar tipo I (0000, 1000, 0001, 1001, 1111, 0111)(0, 8, 1, 9, f, 7)
+            } else if ( texto[6] == '1' || texto[6] == '9' ) { // verificar tipo I
+                
+                int rs1 = binToInt(binario.substr(12, 5));
+
+                if ( rdHAZ[1] != 0 && rdHAZ[1] == rs1 )
+                    cout << "HAZARD!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 1Linha\n";
+                if ( rdHAZ[2] != 0 && rdHAZ[2] == rs1 )
+                    cout << "HAZARD!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 2Linhas\n";
+
+                int rd = binToInt(binario.substr(20, 5));
+                rdHAZ[0] = rd;
+
+                int imm = binToInt(binario.substr(0, 12));
+                cout << "Tipo I: rd=" << rd << ", rs1=" << rs1 << ", imm=" << imm << endl;
+
+                cont.tipoI++;
+            } else if ( texto[6] == '0' || texto[6] == '8' ) { // Verifica tipo I para commands LOAD
                 
                 int rd = binToInt(binario.substr(20, 5));
                 int rs1 = binToInt(binario.substr(12, 5));
-                cout << "Tipo I: rd=" << rd << ", rs1=" << rs1 << endl;
+                int imm = binToInt(binario.substr(0, 12));
+                cout << "Tipo I: rd=" << rd << ", rs1=" << rs1 << ", imm=" << imm << endl;
 
-                cout << texto << " => Tipo I\n";
                 cont.tipoI++;
-            } else if ( texto[6] == '2' || texto[6] == 'a' ) {  //verificar tipo S (0010, 1010)(2, a(10))
+            } else if ( texto[6] == '7' || texto[6] == 'f' ) { // verificar tipo I de ecall
                 
                 int rs1 = binToInt(binario.substr(12, 5));
+
+                int rd = binToInt(binario.substr(20, 5));
+                int imm = binToInt(binario.substr(0, 12));
+                cout << "Tipo I: rd=" << rd << ", rs1=" << rs1 << ", imm=" << imm << endl;
+
+                cont.tipoI++;
+            } else if ( texto[6] == '2' || texto[6] == 'a' ) {  // verificar tipo S (0010, 1010)(2, a(10))
+     
+                int rs1 = binToInt(binario.substr(12, 5));
                 int rs2 = binToInt(binario.substr(7, 5));
+
+                if ( rdHAZ[1] != 0 && (rdHAZ[1] == rs1  || rdHAZ[1] == rs2) )
+                    cout << "HAZARD!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 1Linha\n";
+                if ( rdHAZ[2] != 0 && (rdHAZ[2] == rs1  || rdHAZ[2] == rs2) )
+                    cout << "HAZARD!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 2Linhas\n";
+
                 cout << "Tipo S: rs1=" << rs1 << ", rs2=" << rs2 << endl;
                 
-                cout << texto << " => Tipo S\n";
                 cont.tipoS++;
             } else if ( texto[6] == '6' || texto[6] == 'e' ) {  //verificar tipo B (0110, 1110)(6, e(14))
-                cout << texto << " => Tipo B\n";
+                int rs1 = binToInt(binario.substr(12, 5));
+                int rs2 = binToInt(binario.substr(7, 5));
+                cout << "Tipo B: rs1=" << rs1 << ", rs2=" << rs2 << endl;
+
                 cont.tipoB++;
             }
         } else if ( texto[7] == '7' ) {
             if ( texto[6] == '6' || texto[6] == 'e' ) { //verificar tipo I (0110 ou 1110)(6 ou e)
-                cout << texto << " => Tipo I\n";
+                int rd = binToInt(binario.substr(20, 5));
+                int rs1 = binToInt(binario.substr(12, 5));
+                int imm = binToInt(binario.substr(0, 12));
+                cout << "Tipo I: rd=" << rd << ", rs1=" << rs1 << ", imm=" << imm << endl;
+
                 cont.tipoI++;
             } else if ( texto[6] == '1' || texto[6] == '3' || texto[6] == '9' || texto[6] == 'b' ) { //verificar tipo U (0001, 0011, 1001, 1011)(1, 3, 9, b(11))
-                cout << texto << " => Tipo U\n";
+                int rd = binToInt(binario.substr(20, 5));
+                int imm = binToInt(binario.substr(0, 20));
+                cout << "Tipo U: rd=" << rd << ", imm=" << imm << endl;
+
                 cont.tipoU++;
             } 
         } else if ( texto[7] == 'f') { //verificar tipo J, o único comando com final f(1111)
-            cout << texto << " => Tipo J\n";
+            int rd = binToInt(binario.substr(20, 5));
+            cout << "Tipo J: rd=" << rd << endl;
+
             cont.tipoJ++;
         }
         
