@@ -22,6 +22,7 @@ jalr  I 110 0111 (hex=7)
 lui   U 011 0111 (hex=7)
 auipc U 001 0111 (hex=7)
 */
+
 struct Contador {
     int tipoR = 0;
     int tipoI = 0;
@@ -64,6 +65,55 @@ int binToInt(const string& bin) {
 
 string getOpcode(string binario) {
     return binario.substr(25, 7);
+}
+
+Operacao decodeInstruction ( const string& hex ) {
+    Operacao op;
+
+    string binario = hexToBinary(hex);
+
+    op.opcode = getOpcode(binario);
+
+    // funct3 e 7, necassários para diferenciar algumas instruções
+    op.funct3 = binario.substr(17, 3);  // funct3 (bits 12 - 14)
+    op.funct7 = binario.substr(0, 7);   // funct7 (bits 25 - 31)
+
+    if (op.opcode == "0110011") { // Tipo R
+        op.rd = binario.substr(20, 5);  // rd (bits 7 - 11)
+        op.rs1 = binario.substr(12, 5); // rs1 (bits 15 - 19)
+        op.rs2 = binario.substr(7, 5);  // rs2 (bits 20 - 24)
+        op.imm = "000000000000";  // Sem imm
+    } 
+    else if (op.opcode == "0010011") { // Tipo I
+        op.rd = binario.substr(20, 5);    // rd (bits 7 - 11)
+        op.rs1 = binario.substr(12, 5);   // rs1 (bits 15 - 19)
+        op.imm = binario.substr(0, 12);   // imm (bits 0 - 11)
+    } 
+    else if (op.opcode == "0000011") { // Load instructions (Tipo I)
+        op.rd = binario.substr(20, 5);    // rd (bits 7 - 11)
+        op.rs1 = binario.substr(12, 5);   // rs1 (bits 15 - 19)
+        op.imm = binario.substr(0, 12);   // imm (bits 0 - 11)
+    } 
+    else if (op.opcode == "0100011") { // Tipo S (Store instructions)
+        op.rs1 = binario.substr(12, 5);  // rs1 (bits 15 - 19)
+        op.rs2 = binario.substr(7, 5);   // rs2 (bits 20 - 24)
+        op.imm = binario.substr(0, 7) + binario.substr(20, 5); // imm (combine imm[11:5] and imm[4:0])
+    }
+    else if (op.opcode == "1100011") { // Tipo B (Branch instructions)
+        op.rs1 = binario.substr(12, 5);  // rs1 (bits 15 - 19)
+        op.rs2 = binario.substr(7, 5);   // rs2 (bits 20 - 24)
+        op.imm = binario[0] + binario.substr(24, 1) + binario.substr(1, 6) + binario.substr(20, 4) + "0"; // imm[4:1|11] 
+    }
+    else if (op.opcode == "1101111") { // Tipo J (Jump instructions)
+        op.rd = binario.substr(20, 5);  // rd (bits 7 - 11)
+        op.imm = binario[0] + binario.substr(12, 8) + binario[11] + binario.substr(1, 10) + "0";  // imm
+    }
+    else if (op.opcode == "0110111" || op.opcode == "0010111") { // Tipo U (lui, auipc)
+        op.rd = binario.substr(20, 5);  // rd (bits 7 - 11)
+        op.imm = binario.substr(0, 20); // imm (bits 12 - 31)
+    }
+
+    return op;
 }
 
 int main() {
