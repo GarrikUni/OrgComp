@@ -17,7 +17,7 @@ struct Operacao { //criação default é nop(addi x0, x0, 0)
     string opcode = "0010011";
     string rd = "00000";
     string rs1 = "00000";
-    string rs2 = "00000";;
+    string rs2;
     string imm = "000000000000";
     string funct3 = "000";
     string funct7;
@@ -97,76 +97,70 @@ Operacao decodeInstruction ( const string& hex ) {
     return op;
 }
 
-int hasDataHazard(const Operacao& atual, const Operacao& anterior1, const Operacao& anterior2) {
-    // Ignora NOPs (rd = "00000")
-    if (anterior1.rd != "00000" && (atual.rs1 == anterior1.rd || atual.rs2 == anterior1.rd)) {
-        //cout << "Data Hazard: 1 linha acima.\n";
-        return 2; // precisa de 2 nops
+bool hasWAWHazard ( const Operacao& atual, const Operacao& anterior ) {
+    // a instrução anterior sempre chega ao estágio de escrita (WB) antes da segunda, 
+    // a não ser que a instrução atual seja uma instrução mais curta. 
+    // Essa função garante marca um possível WAW Hazard para garantir o funcionamento correto das instruções
+    if( atual.rd != "00000" && atual.rd == anterior.rd ) {
+        return true;
     }
 
-    if (anterior2.rd != "00000" && (atual.rs1 == anterior2.rd || atual.rs2 == anterior2.rd)) {
-        //cout << "Data Hazard: 2 linhas acima.\n";
-        return 1; // precisa de 1 nop
-    }
-
-    return 0;
+    return false;
 }
+
+bool hasLoadUseHazard(const Operacao& atual, const Operacao& anterior) {
+    // Se a anterior for um load (opcode 0000011)
+    if (anterior.opcode == "0000011") {
+        // E a atual usa o registrador carregado (rd == rs1 ou rs2)
+        return (atual.rs1 == anterior.rd || atual.rs2 == anterior.rd);
+    }
+    return false;
+}
+
 
 int main() {
     cout << "Comeco\n\n";
-    string hexCode;
-    Operacao op;
+    string hexLinha;
+    Operacao operacaoAtual;
 
     ifstream arquivo_lido("ex01_hex_dump.txt"); // Arquivo Hex dump 
 
-    vector<pair<string, Operacao>> instrucoes;
-
-    while ( getline(arquivo_lido, hexCode) ) {
-
-        hexCode.erase( find_if( hexCode.rbegin(), hexCode.rend(), []( unsigned char ch ) { // Limpa a linha de hexCode para retirar inicio e quebra de linha
-            return ch != '\n' && ch != '\r';
-        } ).base(), hexCode.end() );
-
-        op = decodeInstruction(hexCode);
-        instrucoes.push_back({hexCode, op});
-        
-    }
+    Operacao opAnterior; // Forwading preveni conflito RAW, e WAW após 1 linha, então só checaremos a instrução anterior, para WAW
 
     vector<string> instrucoes_final;
     Operacao hist[3];
     set<string> registradores_prontos = {"00000"}; // x0 sempre pronto
     vector<pair<string, Operacao>> fila;
 
-    for ( auto &[hex,operacao] : instrucoes ) {
-        if( registradores_prontos.find(operacao.rs1) != registradores_prontos.end() 
-        && registradores_prontos.find(operacao.rs2) != registradores_prontos.end() 
-        && hasDataHazard(operacao, hist[1], hist[2]) == 0 ){
-            instrucoes_final.push_back(hex); // Os registradores rs1 e rs2 utilizados na instrução já estão prontos, adiciona a operação para ser executada
-            hist[2]=hist[1];
-            hist[1]=hist[0];
-            hist[0]=operacao;
-            registradores_prontos.insert(operacao.rd);
+    while ( getline(arquivo_lido, hexLinha) ) {
+        hexLinha.erase( find_if( hexLinha.rbegin(), hexLinha.rend(), []( unsigned char ch ) { // Limpa a linha de hexLinha para retirar inicio e quebra de linha
+            return ch != '\n' && ch != '\r';
+        } ).base(), hexLinha.end() );
+
+        operacaoAtual = decodeInstruction(hexLinha);
+
+        if( registradores_prontos.find(operacaoAtual.rs1) != registradores_prontos.end() 
+        && registradores_prontos.find(operacaoAtual.rs2) != registradores_prontos.end() 
+        && ( hasWAWHazard( operacaoAtual, opAnterior ) || hasLoadUseHazard(operacaoAtual, opAnterior ) ) ) {
+            instrucoes_final.push_back(hexLinha); // Os registradores rs1 e rs2 utilizados na instrução já estão prontos, adiciona a operação para ser executada
+            opAnterior = operacaoAtual;
+            registradores_prontos.insert(operacaoAtual.rd);
         } else {
-            fila.push_back({hex, operacao}); // Os registradores rs1 e rs2 utilizados na instrução NÃO estão prontos, adiciona a operação para ESPERAR
+            fila.push_back({hexLinha, operacaoAtual});
         }
     }
 
-
     bool progresso = true;
-
     while (progresso && !fila.empty()) { // fica tentando reordenar até que não haja progresso
         progresso = false;
         for (size_t i = 0; i < fila.size(); ) {
             auto [hex, operacao] = fila[i];
-            if ( registradores_prontos.find(operacao.rs1) != registradores_prontos.end() 
+            if ( registradores_prontos.find(operacao.rs1) != registradores_prontos.end()
             && registradores_prontos.find(operacao.rs2) != registradores_prontos.end() 
-            && hasDataHazard(operacao, hist[1], hist[2]) == 0 ) {
-                instrucoes_final.push_back(hex); // Os registradores rs1 e rs2 utilizados na instrução já estão prontos, adiciona a operação para ser executada
+            && ( hasWAWHazard( operacaoAtual, opAnterior ) || hasLoadUseHazard(operacaoAtual, opAnterior ) ) ) {
+                instrucoes_final.push_back(hex); 
                 registradores_prontos.insert(operacao.rd);
-
-                hist[2]=hist[1];
-                hist[1]=hist[0];
-                hist[0]=operacao;
+                opAnterior=operacao;
 
                 fila.erase(fila.begin() + i); // Retira item da fila de espera
                 progresso = true;
@@ -178,23 +172,16 @@ int main() {
 
     while (!fila.empty()) {
         for (size_t i = 0; i < fila.size(); ) {
-            auto [hex, operacao] = fila[i];
-    
-            int numNOPS = hasDataHazard(operacao, hist[0], hist[1]);
+            auto [hex, operacao] = fila[i];  
 
-            for (int j = 0; j < numNOPS; j++) {
+            if ( hasWAWHazard( operacao, opAnterior ) || hasLoadUseHazard(operacao, opAnterior ) ) {
                 instrucoes_final.push_back("00000013");
-                hist[2] = hist[1];
-                hist[1] = hist[0];
-                hist[0] = Operacao();
+                opAnterior = Operacao();
             }
     
             instrucoes_final.push_back(hex);
             registradores_prontos.insert(operacao.rd);
-    
-            hist[2] = hist[1];
-            hist[1] = hist[0];
-            hist[0] = operacao;
+            opAnterior = operacao;
     
             fila.erase(fila.begin() + i);
         }
