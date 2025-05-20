@@ -169,6 +169,7 @@ int main() {
                 hist[0]=operacao;
 
                 fila.erase(fila.begin() + i); // Retira item da fila de espera
+                progresso = true;
             } else {
                 // Só avança se não removeu
                 ++i;
