@@ -1,9 +1,0 @@
-Address     Code        Basic                        Line Source
-
-0x00400000  0x00000413  addi x8,x0,0                 12          addi s0, zero, 0     # i=0
-0x00400004  0x00a42293  slti x5,x8,10                13   Loop:  slti t0, s0, 10      # se i<10 então $t0=1 senão $t0=0
-0x00400008  0x00028863  beq x5,x0,0x00000010         14          beq  t0, zero, Exit  # se t0=0 então goto Exit
-0x0040000c  0x00148493  addi x9,x9,1                 15          addi s1, s1, 1       # j++
-0x00400010  0x00140413  addi x8,x8,1                 16          addi s0, s0, 1       # i++ (do laço for)
-0x00400014  0xff1ff06f  jal x0,0xfffffff0            17          j    Loop              # goto Loop
-0x00400018  0x00000013  addi x0,x0,0                 18   Exit:  nop # nop é um addi x0, x0, 0
