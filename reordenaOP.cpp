@@ -1,4 +1,4 @@
-//g++ -o <arquivo saída> <arquivo entrada>; <-- compilar o exe
+//g++ -o <arquivo saída> <arquivo entrada>; <-- compilar o exe em GCC 7.0
 
 /*
 LISTA DE OPCODES DO RISC-V (ref: https://www.cs.sfu.ca/~ashriram/Courses/CS295/assets/notebooks/RISCV/RISCV_CARD.pdf)

@@ -153,7 +153,7 @@ int main() {
             cout << "CONFLITO RAW (load-use)" << endl;
         }
         
-        cout << operacaoAtual.rd << endl;
+        cout << hexLinha << endl;
 
 
         opAnterior = operacaoAtual;

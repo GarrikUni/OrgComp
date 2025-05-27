@@ -116,7 +116,7 @@ int main() {
     string texto;
     Operacao operacao;
 
-    ifstream arquivo_lido("ex01_hex_dump.txt"); // Arquivo Hex dump 
+    ifstream arquivo_lido("teste_all_hazards.txt"); // Arquivo Hex dump 
 
     Operacao historico[3];
 

@@ -1,0 +1,13 @@
+00100293    addi x5, x0, 1           # x5 = 1
+00a2a333    slt x6, x5, x10          # x6 = (x5 < x10) ? 1 : 0
+0002a283    lw x5, 0(x5)             # x5 = Mem[x5 + 0]
+00f2b2b3    add x5, x5, x15          # x5 = x5 + x15
+0012c063    beq x5, x1, offset       # if x5 == x1, branch to offset
+0002a283    lw x5, 0(x5)             # x5 = Mem[x5 + 0]
+0012c063    beq x5, x1, offset       # if x5 == x1, branch to offset
+00c282b3    add x5, x5, x12          # x5 = x5 + x12
+0052a023    sw x5, 0(x5)             # Mem[x5 + 0] = x5
+0002a283    lw x5, 0(x5)             # x5 = Mem[x5 + 0]
+0052a023    sw x5, 0(x5)             # Mem[x5 + 0] = x5
+00d282b3    add x5, x5, x13          # x5 = x5 + x13
+00028067    jalr x0, 0(x5)           # Jump to address in x5, return address in x0

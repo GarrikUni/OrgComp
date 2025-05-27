@@ -1,0 +1,3 @@
+00002283  # lw x5, 0(x0)       → load para x5  (causa RAW em seguida)
+00b282b3  # add x5, x5, x11    → usa x5 logo após load → CONFLITO RAW (load-use)
+00400293  # addi x5, x0, 4     → também escreve em x5 → CONFLITO WAW (com add acima)

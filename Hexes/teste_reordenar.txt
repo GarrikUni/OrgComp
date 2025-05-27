@@ -1,0 +1,6 @@
+addi x1, x0, 4     # define x1
+addi x2, x0, 5     # define x2
+addi x3, x1, 1     # depende de x1 → hazard com x1
+addi x4, x2, 2     # depende de x2 → hazard com x2
+addi x5, x3, 3     # depende de x3
+addi x6, x4, 4     # depende de x4
